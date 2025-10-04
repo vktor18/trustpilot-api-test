@@ -1,0 +1,7 @@
+trustpilot_test.db
+duplicates.csv
+*.pyc
+__pycache__/
+.env
+.idea/
+tp_reviews.csv
