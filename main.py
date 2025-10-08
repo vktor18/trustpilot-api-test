@@ -3,6 +3,7 @@ import csv
 import io
 import logging
 from fastapi import FastAPI, HTTPException
+from sqlalchemy.exc import SQLAlchemyError
 from fastapi.responses import StreamingResponse, JSONResponse
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import sessionmaker
@@ -129,12 +130,25 @@ def user_reviews_csv(reviewer_id: str):
 
     Returns:
         StreamingResponse: CSV file containing all reviews by the user.
+    Raises:
+        HTTPException: If no reviews are found for the given reviewer_id.
     """
     logging.info(f"Received request for user reviews: reviewer_id={reviewer_id}")
-    stmt = select(TPReview).where(TPReview.Reviewer_Id == reviewer_id)
-    generator = stream_rows_for_stmt(stmt)
-    headers = {"Content-Disposition": f'attachment; filename="{reviewer_id}_reviews.csv"'}
-    return StreamingResponse(generator, media_type="text/csv", headers=headers)
+    session = SessionLocal()
+    try:
+        # Check if any reviews exist for the given reviewer_id
+        stmt = select(TPReview).where(TPReview.Reviewer_Id == reviewer_id)
+        exists = session.execute(stmt).scalars().first()
+        if not exists:
+            logging.warning(f"No reviews found for reviewer_id={reviewer_id}")
+            raise HTTPException(status_code=404, detail="No reviews found for the given reviewer_id")
+
+        # Stream the reviews as CSV
+        generator = stream_rows_for_stmt(stmt)
+        headers = {"Content-Disposition": f'attachment; filename="{reviewer_id}_reviews.csv"'}
+        return StreamingResponse(generator, media_type="text/csv", headers=headers)
+    finally:
+        session.close()
 
 
 @app.get("/user/{reviewer_id}/account")
@@ -151,24 +165,21 @@ def user_account_info(reviewer_id: str):
         HTTPException: If the user is not found.
     """
     logging.info(f"Received request for user account info: reviewer_id={reviewer_id}")
-    session = SessionLocal()
     try:
-        stmt = select(TPReview).where(TPReview.Reviewer_Id == reviewer_id)
-        first = session.execute(stmt).scalars().first()
-        if not first:
-            logging.warning(f"User not found: reviewer_id={reviewer_id}")
-            raise HTTPException(status_code=404, detail="Reviewer not found")
-        account = {
-            "Reviewer_Id": first.Reviewer_Id,
-            "Reviewer_Name": first.Reviewer_Name,
-            "Email_Address": first.Email_Address,
-            "Reviewer_Country": first.Reviewer_Country,
-        }
-        logging.info(f"Returning account info for reviewer_id={reviewer_id}")
-        return JSONResponse(content=account)
-    except Exception as e:
-        logging.error(f"Error fetching user account info: {e}")
-        raise
-    finally:
-        session.close()
-        logging.info("Database session closed after fetching account info.")
+        with SessionLocal() as session:
+            stmt = select(TPReview).where(TPReview.Reviewer_Id == reviewer_id)
+            first = session.execute(stmt).scalars().first()
+            if not first:
+                logging.warning(f"User not found: reviewer_id={reviewer_id}")
+                raise HTTPException(status_code=404, detail="Reviewer not found")
+            account = {
+                "Reviewer_Id": first.Reviewer_Id,
+                "Reviewer_Name": first.Reviewer_Name,
+                "Email_Address": first.Email_Address,
+                "Reviewer_Country": first.Reviewer_Country,
+            }
+            logging.info(f"Returning account info for reviewer_id={reviewer_id}")
+            return JSONResponse(content=account)
+    except SQLAlchemyError as e:
+        logging.error(f"Database error fetching user account info: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")

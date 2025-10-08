@@ -52,8 +52,9 @@ def clean_data(df: pd.DataFrame) -> pd.DataFrame:
     df = df.dropna(subset=["Review_Date"])
     logging.info(f"Filtered invalid dates. Remaining rows: {len(df)}")
     # Convert 'Review_Rating' to numeric and filter for valid ratings (1-5)
-    df["Review Rating"] = pd.to_numeric(df["Review_Rating"], errors="coerce")
-    df = df[(df["Review_Rating"] >= 1) & (df["Review_Rating"] <= 5)]
+    #df["Review Rating"] = pd.to_numeric(df["Review_Rating"], errors="coerce")
+    df = df[df["Review_Rating"].apply(lambda x: isinstance(x, (int, float)) and 1 <= x <= 5)]
+    #df = df[(df["Review_Rating"] >= 1) & (df["Review_Rating"] <= 5)]
     logging.info(f"Filtered invalid ratings. Remaining rows: {len(df)}")
     return df
 

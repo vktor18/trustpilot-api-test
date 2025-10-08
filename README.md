@@ -1,7 +1,7 @@
 # Trustpilot PoC API
 
 ## Overview
-This project is a Proof of Concept (PoC) API designed to handle and serve Trustpilot review data. It ingests a mock dataset of Trustpilot reviews from a CSV file into a database, cleans the data, and provides RESTful API endpoints to retrieve the data in JSON or CSV format. The API is built using FastAPI and supports efficient streaming of large datasets.
+This project is just a test/excercise for the creation of API designed to handle and serve Trustpilot review data. It ingests a mock dataset of Trustpilot reviews from a CSV file into a database, cleans the data, and provides RESTful API endpoints to retrieve the data in JSON or CSV format. The API is built using FastAPI and supports efficient streaming of large datasets.
 
 ## Features
 - **Data Ingestion**: Load and clean a CSV file (`tp_reviews.csv`) into an SQLite database.
@@ -110,3 +110,34 @@ The `load_data.py` script performs the following cleaning tasks:
 - ⚠️ **Alert!** the docker image is not pushed to any registry; it is built locally using the provided Makefile.
 - ⚠️ **Alert!** the database is not persisted in the Docker container unless a volume is mounted.
 - ⚠️ **Alert!** Subsequent run of the docker image by specifying LOAD_DATA=0 will skip the data ingestion step. But the database will be empty unless a volume is mounted to persist it.
+
+
+## Testing
+
+This project includes a comprehensive test suite to ensure the API endpoints and data processing logic function correctly. The tests are built using `pytest` and are designed to be fast and isolated from the production environment.
+
+### Testing Strategy
+
+-   **API Endpoint Testing (`tests/test_main.py`)**: The core API endpoints are tested to verify their behavior, status codes, and response formats.
+-   **Database Isolation**: Tests use a separate, in-memory SQLite database for each test function. This is managed by fixtures in `tests/conftest.py`, which ensures that tests are completely isolated, do not interfere with each other, and do not require a running production database.
+-   **Dependency Override**: The test setup correctly overrides the application's database session (`main.SessionLocal`) to point to the in-memory test database, ensuring API calls within tests use the isolated environment.
+-   **Data Logic Testing (`test_load_data.py`)**: The data cleaning and upsert logic within `load_data.py` is tested to ensure it correctly processes, cleans, and prepares data for the database.
+
+### How to Run Tests
+
+1.  **Install Dependencies**:
+    Make sure you have installed the project and test dependencies.
+
+    ```bash
+    pip install -r requirements.txt
+    pip install pytest httpx
+    ```
+
+2.  **Execute the Test Suite**:
+    From the root directory of the project, run `pytest`.
+
+    ```bash
+    pytest -v
+    ```
+
+    The `-v` flag provides a more verbose output, showing which tests passed. All tests should , hopefully,  pass :) ( it worked on my machine!!!), confirming that the application is working as expected.
